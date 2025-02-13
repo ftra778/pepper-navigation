@@ -2,23 +2,25 @@ import qi
 import argparse
 import sys
 import numpy
+import time
 from PIL import Image
 
 
 def map(services):
     
     services["motion_service"].wakeUp()
-    radius = 8.0
+    radius = 10.0
     err = services["navigation_service"].explore(radius)
     if err != 0:
         print ("Exploration failed with code {}".format(err))
         return
+    else:
+        print("Exploration success: {}".format(err))
     
-    services["navigation_service"].explore(radius)
     services["navigation_service"].stopExploration()
     
     path = services["navigation_service"].saveExploration()
-    # print(path)
+    print(path)
     print ("Exploration saved at path : {}".format(path))
     
     services["navigation_service"].startLocalization()
@@ -26,15 +28,31 @@ def map(services):
     services["navigation_service"].stopLocalization()
 
 def get_map(services):
+    services["navigation_service"].loadExploration("/home/nao/.local/share/Explorer/2025-02-13T002705.781Z.explo")
+    # services["navigation_service"].stopLocalization()
     result_map = services["navigation_service"].getMetricalMap()
     map_width = result_map[1]
     map_height = result_map[2]
     arr = numpy.array(result_map[4]).reshape(map_width, map_height)
     img = (100 - arr) * 2.55 # from 0..100 to 255..0
     img = numpy.array(img, numpy.uint8)
-    Image.frombuffer('L',  (map_width, map_height), img, 'raw', 'L', 0, 1).show()
-    img_f = Image.fromarray(arr)
-    img_f.save("your_file.jpeg")
+    Image.frombuffer('L',  (map_width, map_height), img, 'raw', 'L', 0, 1).show()        
+    zz=numpy.asarray(img)
+    print(zz.max(), zz.min(), zz.dtype, zz.shape) # Verify something has been read
+    x = input("Pause")
+    
+def nav(services):
+    services["navigation_service"].loadExploration("/home/nao/.local/share/Explorer/2025-02-13T002705.781Z.explo")
+    services["navigation_service"].startLocalization()
+    
+    # services["navigation_service"].stopLocalization()
+    
+def move(services, x, y, z):
+    services["navigation_service"].navigateToInMap([x, y, z])
+    
+def get(services):
+    print(services["navigation_service"].getRobotPositionInMap())
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -64,5 +82,30 @@ if __name__ == "__main__":
                     "motion_service": motion_service
                 }
     
-    if args.explore is 1: map(services)
-    get_map(services)
+    # Must be number between 0.0 - 1.0?
+    move(services, 0.0, 0.0, 0.0)
+    get(services)
+    time.sleep(2)
+    move(services, 0.5, 0.0, 0.0)
+    get(services)
+    time.sleep(2)
+    move(services, 0.5, 0.5, 0.0)
+    get(services)
+    time.sleep(2)
+    move(services, 0.0, 0.5, 0.0)
+    get(services)
+    time.sleep(2)
+    move(services, 0.0, 0.5, 0.5)
+    get(services)
+    time.sleep(2)
+    move(services, 0.0, 0.0, 0.5)
+    get(services)
+    time.sleep(2)
+    move(services, 0.5, 0.0, 0.5)
+    get(services)
+    time.sleep(2)
+    move(services, 0.0, 0.0, 0.0)
+    get(services)
+    # nav(services)
+    # if args.explore is 1: map(services)
+    # get_map(services)
