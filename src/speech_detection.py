@@ -77,7 +77,6 @@ class SpeechDetection():
             return -1
         services["asr_service"].pause(False)
         services["sound_detect_service"].subscribe("chatbot")
-        # services["asr_service"].subscribe("Test_ASR")
         services["asr_service"].subscribe("activation")
         print("Audio services subscribed")
         return 0
@@ -87,7 +86,6 @@ class SpeechDetection():
         services["asr_service"].removeAllContext()
         services["asr_service"].pause(False)
         services["sound_detect_service"].unsubscribe("chatbot")
-        # services["asr_service"].unsubscribe("Test_ASR")
         services["asr_service"].unsubscribe("activation")
         print("Audio services unsubscribed")
         
@@ -112,20 +110,21 @@ class SpeechDetection():
                     if (((services["memory_service"].getData("WordRecognized")[0] == "hello") 
                         or (services["memory_service"].getData("WordRecognized")[0] == "pepper"))
                         and (services["memory_service"].getData("WordRecognized")[1] > 0.3)):
-                    #     break
+
                     # if services["memory_service"].getData("SoundDetected")[0][1] == 1:
                         services["tts_service"].say("I'm listening")
                         break
                 except TypeError:
                     # print("NoneType")
                     continue
-            services["asr_service"].pause(True)
+            # services["asr_service"].pause(True)
             services["recorder_service"].startMicrophonesRecording(self.nao_path, self.format, self.rate, [0, 0, 1, 0])
             
             buffer = time.time()
             while True:
+                print(services["memory_service"].getData("SoundDetected"))
                 if (services["memory_service"].getData("SoundDetected")[0][1] == 0):
-                    if (time.time() - buffer > 3):
+                    if (time.time() - buffer > 2):
                         services["recorder_service"].stopMicrophonesRecording()
                         # subprocess.Popen(["scp", "nao@192.168.0.3:/home/nao/test.wav", "/home/user1/pepper-motion-mimicking/audio/"])
                         subprocess.Popen(["scp", "nao@{}:{}".format(self.nao_ip, self.nao_path), self.audio_path])

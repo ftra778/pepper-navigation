@@ -81,38 +81,44 @@ def main(args, session):
                     "animation_player_service": animation_player_service
                 }
     
-    # Verbose printer
-    _v_1t = None
-    _v_2t = None
-    _v_3t = None
-    if args.verbosity:
-        if args.verbosity >= 1:
-            def _v_1(services):
-                global status
-                while status:
-                    print("* [ASR] {}\n".format(services["memory_service"].getData("WordRecognized")))
-                    time.sleep(3)
-            _v_1t = threading.Thread(target=_v_1, args=(services,))
-            _v_1t.start()
-        if args.verbosity >= 2:
-            def _v_2(services):
-                global status
-                while status:
-                    print("* [STATUS] {}\n".format(services["memory_service"].getData("ALSpeechRecognition/Status")))
-                    time.sleep(3)
-            _v_2t = threading.Thread(target=_v_2, args=(services,))
-            _v_2t.start()
-        if args.verbosity >= 3:
-            def _v_3(services):
-                print("Not Implemented")
-            _v_3t = threading.Thread(target=_v_3, args=(services,))
-            _v_3t.start()
+    # # Verbose printer
+    # _v_1t = None
+    # _v_2t = None
+    # _v_3t = None
+    # print(args.verbosity)
+    # if args.verbosity:
+    #     if args.verbosity >= 1:
+    #         def _v_1(services):
+    #             global status
+    #             while status:
+    #                 print("* [ASR] {}".format(services["memory_service"].getData("WordRecognized")))
+    #                 print("* [STATUS] {}".format(services["memory_service"].getData("ALSpeechRecognition/Status")))
+    #                 print("* [SD] {}\n".format(services["memory_service"].getData("SoundDetected")))
+    #                 time.sleep(3)
+    #         _v_1t = threading.Thread(target=_v_1, args=(services,))
+    #         _v_1t.start()
+    #     if args.verbosity >= 2:
+    #         def _v_2(services):
+    #             global status
+    #             while status:
+    #                 print("* [STATUS] {}\n".format(services["memory_service"].getData("ALSpeechRecognition/Status")))
+    #                 time.sleep(3)
+    #         _v_2t = threading.Thread(target=_v_2, args=(services,))
+    #         _v_2t.start()
+    #     if args.verbosity >= 3:
+    #         def _v_3(services):
+    #             global status
+    #             while status:
+    #                 print("* [SD] {}\n".format(services["memory_service"].getData("SoundDetected")))
+    #                 time.sleep(3)
+    #         _v_3t = threading.Thread(target=_v_3, args=(services,))
+    #         _v_3t.start()
 
     # services["life_service"].setAutonomousAbilityEnabled("BasicAwareness", False)
     # services["life_service"].setAutonomousAbilityEnabled("BackgroundMovement", False)
     # services["posture_service"].goToPosture("Stand", 0.8)
     
-    sensitivity = 0.55        
+    sensitivity = 0.93
     services["sound_detect_service"].setParameter("Sensitivity", sensitivity)
     print("Sensitivity set to {}".format(sensitivity))        
     services["recorder_service"].stopMicrophonesRecording()
@@ -132,13 +138,13 @@ def main(args, session):
                 
                 if conn is None:
                     print("GPT client not connected")
+                    services["memory_service"].raiseEvent("WordRecognized", ["", -3.0])
                     continue
                 conn.sendall((os.path.expanduser("~") + "/pepper-motion-mimicking/audio/query.wav").encode())       # Send audio file to Python 3.8 environment
                 
                 # Receive result from Python 3.8 environment
                 buf = conn.recv(4096)
                 services["posture_service"].goToPosture("Stand", 0.8)
-                services["memory_service"].raiseEvent("WordRecognized", ["", -3.0])
                 
                 if not buf:
                     break
@@ -150,7 +156,8 @@ def main(args, session):
                     services["tts_service"].say("I didnt catch that, could you repeat it for me?")
                     continue
                 services["tts_service"].say(result)
-                services["asr_service"].pause(False)
+                services["memory_service"].raiseEvent("WordRecognized", ["", -3.0])
+                # services["asr_service"].pause(False)
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt, closing")
     if conn is None:
@@ -171,9 +178,9 @@ def main(args, session):
     
     status = False
     
-    if _v_1t is not None: _v_1t.join()
-    if _v_2t is not None: _v_2t.join()
-    if _v_3t is not None: _v_3t.join()
+    # if _v_1t is not None: _v_1t.join()
+    # if _v_2t is not None: _v_2t.join()
+    # if _v_3t is not None: _v_3t.join()
     server_t.join()
 
 if __name__ == "__main__":
