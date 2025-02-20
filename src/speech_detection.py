@@ -118,6 +118,10 @@ class SpeechDetection():
                     # print("NoneType")
                     continue
             # services["asr_service"].pause(True)
+            
+            services["tracker_service"].stopTracker()
+            services["life_service"].setAutonomousAbilityEnabled("BasicAwareness", False)
+            services["life_service"].setAutonomousAbilityEnabled("BackgroundMovement", False)
             services["recorder_service"].startMicrophonesRecording(self.nao_path, self.format, self.rate, [0, 0, 1, 0])
             
             buffer = time.time()
@@ -126,6 +130,11 @@ class SpeechDetection():
                 if (services["memory_service"].getData("SoundDetected")[0][1] == 0):
                     if (time.time() - buffer > 2):
                         services["recorder_service"].stopMicrophonesRecording()
+
+                        # Restart tracker and autonomous life
+                        services["tracker_service"].track("Face")
+                        services["life_service"].setAutonomousAbilityEnabled("BasicAwareness", True)
+                        services["life_service"].setAutonomousAbilityEnabled("BackgroundMovement", True)
                         # subprocess.Popen(["scp", "nao@192.168.0.3:/home/nao/test.wav", "/home/user1/pepper-motion-mimicking/audio/"])
                         subprocess.Popen(["scp", "nao@{}:{}".format(self.nao_ip, self.nao_path), self.audio_path])
                         time.sleep(2)
@@ -170,7 +179,7 @@ if __name__ == "__main__":
         
     sensitivity = 0.55        
     services["sound_detect_service"].setParameter("Sensitivity", sensitivity)
-    services["recorder_service"].stopMicrophonesRecording()
+    # services["recorder_service"].stopMicrophonesRecording()
     # services["recorder_service"].subscribe("chatbot")
     services["asr_service"].setLanguage("English")
 

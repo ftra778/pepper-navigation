@@ -1,23 +1,23 @@
 import argparse
 import sys
-import math
-import pandas as pd
+# import math
+# import pandas as pd
 import os
 import qi
 import naoqi
 import threading
-import yaml
+# import yaml
 from yaml import load
 import subprocess
-import filters
 import socket
 import time
-import gptpy2
 from types import NoneType
-from apply_motion import GestureMimicking
+# import gptpy2
+# from apply_motion import GestureMimicking
+# from gptpy2.chat_server import ChatServer
+# from gptpy2.utils import *
+# import filters
 from speech_detection import SpeechDetection
-from gptpy2.chat_server import ChatServer
-from gptpy2.utils import *
 
 ## Easy copy-paste into terminal
 # export PYTHONPATH=${PYTHONPATH}:/home/user1/Documents/pynaoqi-python2.7-2.5.5.5-linux64/lib/python2.7/site-packages
@@ -37,18 +37,20 @@ def connect(ip, port):
     except Exception as e:
         print(e)
         return
-    
 
-def main(args, session):
+def disconnect():
     global conn
-    global status
-    motion_mimicking = GestureMimicking(robot=args.robot)
-    speech_detector = SpeechDetection(ip=args.ip, port=args.port)
-    
-    # Chatbot server
-    server_t = threading.Thread(target=connect, name='connect', args=("127.0.0.1", 3434))
-    server_t.start()
-    
+    if conn is None:
+        close_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        close_socket.connect(("127.0.0.1", 3434))
+        while conn is None:
+            pass
+        conn.shutdown(socket.SHUT_RDWR)
+        conn.close()
+        close_socket.shutdown(socket.SHUT_RDWR)
+        close_socket.close()
+        
+def init(session):
     # Movement services
     motion_service = session.service("ALMotion")
     posture_service = session.service("ALRobotPosture")
@@ -60,15 +62,13 @@ def main(args, session):
     asr_service = session.service("ALSpeechRecognition")
     # asr_service.setLanguage("English")
     recorder_service = session.service("ALAudioRecorder")
-    # recorder_service.stopMicrophonesRecording()
+    recorder_service.stopMicrophonesRecording()
     sound_detect_service = session.service("ALSoundDetection")
     # sound_detect_service.subscribe("chatbot")
     memory_service = session.service("ALMemory")
     animation_player_service = session.service("ALAnimationPlayer")
-    
 
-
-    services = {    
+    services =  {    
                     "motion_service": motion_service,
                     "posture_service": posture_service,
                     "life_service": life_service,
@@ -81,52 +81,67 @@ def main(args, session):
                     "animation_player_service": animation_player_service
                 }
     
-    # # Verbose printer
-    # _v_1t = None
-    # _v_2t = None
-    # _v_3t = None
-    # print(args.verbosity)
-    # if args.verbosity:
-    #     if args.verbosity >= 1:
-    #         def _v_1(services):
-    #             global status
-    #             while status:
-    #                 print("* [ASR] {}".format(services["memory_service"].getData("WordRecognized")))
-    #                 print("* [STATUS] {}".format(services["memory_service"].getData("ALSpeechRecognition/Status")))
-    #                 print("* [SD] {}\n".format(services["memory_service"].getData("SoundDetected")))
-    #                 time.sleep(3)
-    #         _v_1t = threading.Thread(target=_v_1, args=(services,))
-    #         _v_1t.start()
-    #     if args.verbosity >= 2:
-    #         def _v_2(services):
-    #             global status
-    #             while status:
-    #                 print("* [STATUS] {}\n".format(services["memory_service"].getData("ALSpeechRecognition/Status")))
-    #                 time.sleep(3)
-    #         _v_2t = threading.Thread(target=_v_2, args=(services,))
-    #         _v_2t.start()
-    #     if args.verbosity >= 3:
-    #         def _v_3(services):
-    #             global status
-    #             while status:
-    #                 print("* [SD] {}\n".format(services["memory_service"].getData("SoundDetected")))
-    #                 time.sleep(3)
-    #         _v_3t = threading.Thread(target=_v_3, args=(services,))
-    #         _v_3t.start()
-
-    # services["life_service"].setAutonomousAbilityEnabled("BasicAwareness", False)
-    # services["life_service"].setAutonomousAbilityEnabled("BackgroundMovement", False)
-    # services["posture_service"].goToPosture("Stand", 0.8)
+    services["life_service"].setAutonomousAbilityEnabled("BasicAwareness", True)
+    services["life_service"].setAutonomousAbilityEnabled("BackgroundMovement", True)
+    services["posture_service"].goToPosture("Stand", 0.8)
+    services["tracker_service"].registerTarget("Face", 0.2)
+    
     
     sensitivity = 0.93
     services["sound_detect_service"].setParameter("Sensitivity", sensitivity)
-    print("Sensitivity set to {}".format(sensitivity))        
     services["recorder_service"].stopMicrophonesRecording()
     services["asr_service"].setLanguage("English")
+    
+    return services
+    
 
+def main(args, session):
+    global conn
+    global status
+    # motion_mimicking = GestureMimicking(robot=args.robot)
+    speech_detector = SpeechDetection(ip=args.ip, port=args.port)
+    
+    # Chatbot server
+    server_t = threading.Thread(target=connect, name='connect', args=("127.0.0.1", 3434))
+    server_t.start()
+    
+    services = init(session=session)
+    
+    # Verbose printer
+    _v_1t = None
+    _v_2t = None
+    _v_3t = None
+    print(args.verbosity)
+    if args.verbosity:
+        if args.verbosity >= 1:
+            def _v_1(services):
+                global status
+                while status:
+                    print("* [ASR] {}".format(services["memory_service"].getData("WordRecognized")))
+                    time.sleep(1)
+            _v_1t = threading.Thread(target=_v_1, args=(services,))
+            _v_1t.start()
+        if args.verbosity >= 2:
+            def _v_2(services):
+                global status
+                while status:
+                    print("* [STATUS] {}\n".format(services["memory_service"].getData("ALSpeechRecognition/Status")))
+                    time.sleep(1)
+            _v_2t = threading.Thread(target=_v_2, args=(services,))
+            _v_2t.start()
+        if args.verbosity >= 3:
+            def _v_3(services):
+                global status
+                while status:
+                    print("* [SD] {}\n".format(services["memory_service"].getData("SoundDetected")))
+                    time.sleep(1)
+            _v_3t = threading.Thread(target=_v_3, args=(services,))
+            _v_3t.start()
+            
     sub_result = speech_detector.subscribe(services=services)
     if sub_result == -1:
         print("couldn't subscribe to ASR/Sound Detection, closing...")
+        
     else:
         try:
             while True:
@@ -150,7 +165,7 @@ def main(args, session):
                     break
                 result = buf.decode()
                 if result == "011":
-                    services["tts_service"].say("Shutting down chatbot")
+                    services["tts_service"].say("Shutting down chat bot")
                     break
                 if result == "010":
                     services["tts_service"].say("I didnt catch that, could you repeat it for me?")
@@ -160,27 +175,25 @@ def main(args, session):
                 # services["asr_service"].pause(False)
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt, closing")
-    if conn is None:
-        close_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        close_socket.connect(("127.0.0.1", 3434))
-        while conn is None:
-            pass
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
-        close_socket.shutdown(socket.SHUT_RDWR)
-        close_socket.close()
 
 
+    services["tracker_service"].stopTracker()
+    services["tracker_service"].unregisterAllTargets()
+    services["life_service"].setAutonomousAbilityEnabled("BasicAwareness", False)
+    services["life_service"].setAutonomousAbilityEnabled("BackgroundMovement", False)
+    services["posture_service"].goToPosture("Crouch", 0.0)
     # motion_mimicking.read("wave")
     # motion_mimicking.apply(useWholeBody=False, services=services)
     # motion_mimicking.run(gesture="wave", useWholeBody=False, services=services)
+    disconnect()
     speech_detector.shutdown(services)
+    #navigate back to starting point
     
     status = False
     
-    # if _v_1t is not None: _v_1t.join()
-    # if _v_2t is not None: _v_2t.join()
-    # if _v_3t is not None: _v_3t.join()
+    if _v_1t is not None: _v_1t.join()
+    if _v_2t is not None: _v_2t.join()
+    if _v_3t is not None: _v_3t.join()
     server_t.join()
 
 if __name__ == "__main__":

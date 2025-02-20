@@ -3,11 +3,12 @@ import argparse
 import sys
 import numpy
 import time
+import subprocess
+import os
 from PIL import Image
 
 
-def map(services):
-    
+def map(services, args):
     services["motion_service"].wakeUp()
     radius = 10.0
     err = services["navigation_service"].explore(radius)
@@ -16,19 +17,17 @@ def map(services):
         return
     else:
         print("Exploration success: {}".format(err))
-    
     services["navigation_service"].stopExploration()
     
     path = services["navigation_service"].saveExploration()
-    print(path)
     print ("Exploration saved at path : {}".format(path))
-    
+    subprocess.Popen(["scp", "nao@{}:{}".format(args.ip, path), os.path.expanduser("~/pepper-navigation/src/maps/")])
     services["navigation_service"].startLocalization()
     services["navigation_service"].navigateToInMap([0., 0., 0.])
     services["navigation_service"].stopLocalization()
 
 def get_map(services):
-    services["navigation_service"].loadExploration("/home/nao/.local/share/Explorer/2025-02-13T002705.781Z.explo")
+    services["navigation_service"].loadExploration("/home/nao/.local/share/Explorer/2025-02-19T231004.549Z.explo")
     # services["navigation_service"].stopLocalization()
     result_map = services["navigation_service"].getMetricalMap()
     map_width = result_map[1]
@@ -42,13 +41,14 @@ def get_map(services):
     # x = input("Pause")
     
 def nav(services):
-    services["navigation_service"].loadExploration("/home/nao/.local/share/Explorer/2025-02-13T002705.781Z.explo")
+    services["navigation_service"].loadExploration("/home/nao/.local/share/Explorer/2025-02-19T231004.549Z.explo")
     services["navigation_service"].startLocalization()
     
     # services["navigation_service"].stopLocalization()
     
-def move(services, x, y, z):
-    services["navigation_service"].navigateToInMap([x, y, z])
+def move(services, coordinates):
+    # services["navigation_service"].navigateToInMap(coordinates)
+    services["navigation_service"].navigateToInMap([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
     
 def get(services):
     print(services["navigation_service"].getRobotPositionInMap())
@@ -62,6 +62,8 @@ if __name__ == "__main__":
                         help="Naoqi port number")
     parser.add_argument("--explore", type=int, default=0,
                         help="Let Pepper explore. Default is 0 (False)")
+    parser.add_argument("--move", nargs='+', default=["na"],
+                        help="Move pepper to location. Default makes no movement")
     
 
     args = parser.parse_args()
@@ -82,11 +84,21 @@ if __name__ == "__main__":
                     "motion_service": motion_service
                 }
     
+    print(args.move)
+    if args.explore == 1:
+        map(services, args)
+    if args.move != ["na"]:
+        # services["navigation_service"].startLocalization()
+        # nav(services)
+        print(services["navigation_service"].getRobotPositionInMap())
+        move(services, coordinates=args.move)
+        print(services["navigation_service"].getRobotPositionInMap())
+    
     # Must be number between 0.0 - 1.0?
     # move(services, 0.0, 0.0, 0.0)
     # get(services)
     # time.sleep(2)
-    # move(services, 0.5, 0.0, 0.0)
+    # move(services, 0.1, 0.0, 0.0)
     # get(services)
     # time.sleep(2)
     # move(services, 0.5, 0.5, 0.0)
@@ -108,4 +120,4 @@ if __name__ == "__main__":
     # get(services)
     # nav(services)
     # if args.explore is 1: map(services)
-    get_map(services)
+    # get_map(services)

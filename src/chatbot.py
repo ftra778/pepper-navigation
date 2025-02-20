@@ -24,6 +24,8 @@ class WhisperSTT():
     
     def get_transcribe(self, audio: str, language: str = "en"):
         result = self.model.transcribe(audio=audio, language=language, verbose=False)
+        if "enough is enough" in result.get('text', '').lower():
+            return "q"
         return result.get('text', '')
 
 
@@ -48,13 +50,12 @@ def test():
     response = whisper.get_transcribe("/home/user1/pepper-motion-mimicking/audio/query.wav")
     received_msg = llama.chat(response)
     print(received_msg)
-                
-    
     
 def main():
     global client
     llama = LlamaAssistant(system_prompt=None)
     whisper = WhisperSTT()
+    print("[STARTUP] Models loaded successfully")
     try:
         while True:
             if client is None:
